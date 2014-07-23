@@ -359,6 +359,10 @@ be used once.
 
 .play demo/nacl.go /^\tbobPub/,/"OK"/
 
+* Other interesting packages
+
+- [[https://godoc.org/code.google.com/p/go.crypto/openpgp][`code.google.com/p/go.crypto/openpgp`]]
+
 * Real world projects
 
 - [[https://][Adam Langley]] wrote [[https://pond.imperialviolet.org/][Pond]] ([[https://github.com/agl/pond]])

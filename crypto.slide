@@ -219,6 +219,12 @@ Please don't turn on `InsecureSkipVerify`.
 
 .play demo/nacl.go /^\tbobPub/,/"OK"/
 
+* Other interesting packages
+
+- [[https://godoc.org/code.google.com/p/go.crypto/openpgp][`code.google.com/p/go.crypto/openpgp`]]
+- [[https://godoc.org/code.google.com/p/go.crypto/otr][`code.google.com/p/go.crypto/otr`]]
+- [[https://godoc.org/code.google.com/p/go.crypto/ssh][`code.google.com/p/go.crypto/ssh`]]
+
 * Real world projects
 
 - [[https://][Adam Langley]] wrote [[https://pond.imperialviolet.org/][Pond]] ([[https://github.com/agl/pond]])
