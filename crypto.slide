@@ -222,6 +222,6 @@ Please don't turn on `InsecureSkipVerify`.
 * Real world projects
 
 - [[https://][Adam Langley]] wrote [[https://pond.imperialviolet.org/][Pond]] ([[https://github.com/agl/pond]])
-- [[https://twitter.com/dgryski/][Damian Gryksi]] [[https://github.com/dgryski/dkeyczar/][has implemented]] [[http://www.keyczar.org/][Keyczar]]
+- [[https://twitter.com/dgryski/][Damian Gryski]] [[https://github.com/dgryski/dkeyczar/][has implemented]] [[http://www.keyczar.org/][Keyczar]]
 - [[https://github.com/cmars][Casey Marshall]] has written an [[https://hockeypuck.github.io/][OpenPGP key server]]
 - [[https://cloudflare.com/][CloudFlare]] wrote [[https://github.com/cloudflare/cfssl][CFSSL]], an SSL utility
