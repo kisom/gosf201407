@@ -1,0 +1,368 @@
+A Tour of the Cryptography Packages in Go
+
+Kyle Isom, CloudFlare
+@kyleisom
+
+https://www.cloudflare.com
+
+
+* What does crypto do?
+
+- Confidentiality (what most people think of when they think of
+encryption) prevents an eavesdropper from recovering the text of a
+secured message.
+
+- Integrity ensures that the message hasn't been tampered with.
+
+- Authenticity ensures that both sides are talking to the peer they
+think they are talking to.
+
+All three are critical:
+
+- A system with integrity and authenticity but without confidentiality
+means that, while both sides can be sure of who they're talking to
+and that the message hasn't been tampered with, an attacker can read
+the message.
+
+- A system with confidentiality and authenticity but without integrity
+means that, while an attacker can't read the messages being sent and that
+they are talking to who they think they are talking to, an attacker
+can modify messages. This might not seem important, but it can be
+devastating (and there are many attacks proving this). Prime example:
+padding oracle attack.
+
+- A system with confidentiality and integrity but without authenticity
+means that, while both sides can be sure that the messages aren't
+being tampered with and that an eavesdropper can't read the messages,
+neither side is sure who they're talking to. The classic example is a
+man-in-the-middle attack.
+
+* Diff'rent strokes for diffr'ent folks
+
+There are two kinds of cryptography:
+
+- In secret key cryptography, everyone has the same key.
+
+The building blocks used here include AES for confidentiality
+and HMAC for integrity and authenticity. These building blocks are
+fast, but key management is cumbersome. This is similar to sharing
+a password.
+
+- In public key cryptography, each party has a key with two halves.
+
+Alice generates a key which has a private part (which she never reveals
+to anyone) and a public part (which she gives out to everyone). This is
+slow, but key management is simpler. This is similar to separate user
+accounts, where a user ID is used to grant privileges. The building blocks
+here include RSA (which has encryption and digital signature operations),
+and ECDSA for integrity and authenticity. Digital signatures provide
+integrity and authenticity.
+
+- When public key crypto is used, it's often combined with secret key.
+
+In hybrid cryptography, RSA is often used to encrypt a temporary,
+randomly-generated session key to hand off, or ECDH is used to derive
+a shared session key from both parties' elliptic curve keys.
+
+- Public key crypto should be avoided where possible.
+
+PKC is slow, and there are alternatives. For example, passwords might
+be used to generate a symmetric key (through an algorithm like Scrypt,
+but *never* solely by hashing), or both parties might use a password
+key exchange algorithm (PAKE, SRP).
+
+* Go's crypto packages
+
+Go has a pretty solid set of crypto tools in the `crypto` standard
+library and the `go.crypto` supplementary package. A high level
+overview of the ones you'll want to be famiiar with:
+
+- crypto/sha256 (and sha1/sha512)
+- crypto/hmac
+- crypto/rand
+- crypto/x509
+- crypto/tls
+- code.google.com/p/go.crypto/scrypt (and bcrypt)
+- code.google.com/p/go.crypto/nacl
+
+* Random Data
+
+- crypto/rand
+
+This is almost always where you should be getting your random data
+from; it's an interface to the appropriate operating system's PRNG
+(i.e. `/dev/random` or the Windows `CryptGenRandom` API).
+
+`rand.Reader` provides a standard `io.Reader` interface to read random
+bytes from. Only one goroutine can read from it at a time, as you
+might expect. Use it just like any other reader:
+
+.play demo/rand.go /^func Random/,
+
+* Hashing
+
+- crypto/sha256 (and sha1/sha512)
+
+These are useful for generating identifiers and generating uniformly
+random blobs. For example, in digital signatures, hashes are often
+used to produce a digest of a message that is then signed.
+
+.play demo/hash.go /^func Hash/,
+
+Don't use this for storing passwords or deriving encryption keys from
+passwords!
+
+Don't use MD5 for anything crypto-related, and avoid using SHA-1
+except when the RFC requires it.
+
+* HMAC
+
+HMACs provide integrity and authenticity for secret key
+cryptography. There are other MACs, but HMAC is a commonly used and
+well-vetted construction. HMACs are used in conjunction with a hashing
+algorithm (i.e. HMAC-SHA256).
+
+Generate a random key (i.e. through `crypto/rand`), and use that as
+the key. A good rule of thumb is to use the same size key as your hash
+function's output here:
+
+- SHA256: 32-byte key
+- SHA384: 48-byte key
+- SHA512: 64-byte key
+
+The output of HMAC is called a "message tag".
+
+.play demo/hmac.go /^func HMAC/,
+
+* Secret key crypto
+
+This is difficult to get right; use NaCl unless your specs demand AES.
+If you have to use AES, use it with a good block mode (CBC with
+randomly- generated IVs and PKCS #5 padding or GCM when you're
+encrypting discrete messages), and make sure to HMAC the ciphertext
+(don't use the same key for AES and HMAC!), appending the tag to the
+message. When decrypting, verify the tag _first_, and discard the
+message if this fails. If you have to do this yourself, it's best to
+talk to someone who knows what they're doing as there are many
+pitfalls.
+
+* TLS Certificates
+
+- crypto/x509
+
+Certificates (and, as of Go 1.3, certificate requests) are handled here.
+
+* Password hashing
+
+- code.google.com/p/go.crypto/scrypt
+- code.google.com/p/go.crypto/bcrypt
+
+When you store passwords or generate cryptographic keys from passphrases,
+you should use Scrypt or bcrypt. Generally:
+
+- use bcrypt for storing passwords
+- use scrypt for encrypting things with a password
+
+bcrypt is very straightforward, and comes with tools for checking and
+verifying that hashes match:
+
+.play demo/bcrypt.go /^const cost/,
+
+Scrypt is a better choice when you need to use a password to create a
+key for encryption. It requires a salt, which should be at least 16
+bytes and randomly generated, and this salt must be preserved to
+derive the same key from the password. It isn't a secret, though, and
+it can be stored with the encrypted message (maybe prepended to the
+message).
+
+.play demo/scrypt.go /^func main/,
+
+* Scrypt parameters and performance
+
+To illustrate the effects the different parameters have on
+performance, here is a benchmark of Scrypt on the password "password",
+a 16-byte salt, and returning 32 bytes of output:
+
+    N           r       p        Time
+    ----------------------------------
+    16384       8       1        56 ms
+    16384       8       2       109 ms
+    16384       8       4       217 ms
+    32768       8       1       112 ms
+    32768       8       2       220 ms
+    32768       8       4       437 ms
+
+
+* NaCl
+
+If you're implementing your own system, not from a spec, you should
+use the NaCl package for crypto. It's a solid suite that doesn't
+originate from NIST, and it's fast -- even without hardware
+support. The NaCl system was developed by a well-known and respected
+cryptographer who is also known for well-written code.
+
+When working with NaCl, it's helpful to keep its terminology in mind:
+it uses the term "seal" to mean authenticated encryption, and "open"
+to mean "authenticated decryption".
+
+* Picking ciphers
+
+*Use*whatever*the*spec*says*to*use*. It's better to choose the ciphers
+recommended for the system you're implementing than to make your own
+choice without good reason. Follow the RFCs.
+
+ECC is faster, but we know more about RSA. That is, ECC gives much better
+performance, but there's more research and cryptographic study of RSA
+than there is with ECC.
+
+Avoid public key crypto where possible: it's slow. However, it makes
+exchanging secrets much easier, and there aren't many vetted options
+for password key exchange algorithms.
+
+With TLS ciphers, you should prefer
+
+- tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+
+This is fast on clients with hardware AES support (AES-NI, any recent /
+Core i[57] Intel chip should have it). The ECDHE means that elliptic curve
+ephemeral keys are being used, which provides forward secrecy. What does
+this mean? Consider Heartbleed: if your RSA key was stolen, an attacker
+still can't decrypt any previous conversations (but they can potentially
+decrypt _any_future_ones_). You should prefer stronger hash functions
+(i.e. SHA-256 instead of SHA-1) where possible.
+
+- tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+
+However, not all clients support GCM or stronger hash functions, so
+you'll need to fall back to this. CloudFlare has decided, after much
+debate and research, that you should avoid RC4 as much as possible due
+to the potential for compromise.
+
+Keep an eye out for a ChaCha20 cipher suite: for mobile clients, this
+will be much faster (but increases the server's load due to a lack of
+hardware support for these ciphers). In this case, you have to make
+a choice whether to take the increased load to improve your client
+experience, or to let the client take the hit to their speed and battery.
+
+Typically, you want to pick the strongest cipher you can afford to use;
+don't downgrade until you have numbers to prove that it is a problem. We
+favour AES-128 here because we want AES-GCM (a specific construction
+of AES), and the TLS spec doesn't define AES-GCM for AES-256.
+
+* Certificate chains
+
+A certificate chain is a sequence of TLS certificates, starting with a
+_leaf_certificate_, which is the certificate belonging to the server,
+and ending with a _root_certificate_, which belongs to some certificate
+authority (GlobalSign, Comodo, etc...), and separated by zero or more
+_intermediates_. Intermediates are certificates that are signed by a root
+certificate (or another intermediate)
+
+- www.example.net is signed by
+- GlobalSign Intermediate #1 which is signed by
+- GlobalSign Root Authority.
+
+If a certificate wasn't signed by the next certificate in the chain,
+the chain is broken, and can't be trusted.
+
+The root certificates are a set of "reputable" (for varying definitions
+of rpeutable) certificates owned by "trusted" (for varying definitions
+of trusted) signing authorities. If the root certificate isn't trusted,
+the chain can't be verified. This might be the case when a self-signed
+certificate is used, and it means that automatic verification can't be
+used to validate the chain. The root certificate must be verified in some
+other way. Note that in the case of a self-signed server certificate, the
+certificate serves as both the leaf certificate and the root certificate
+in a chain with length 1.
+
+What do you do if you don't have the intermediate? There is a certificate
+extension, called Authority Information Access, that may contain one or
+more "CA Issuer" fields that contain URLs pointing to the certificate
+that signed it. Sometimes (but not always), these links may be followed
+to build a chain.
+
+Go supports "certificate pools", which are most commonly used to store
+collections of trusted root certificates and intermediate certificates
+(intermediates are stored in a separate pool than roots). The default
+is to use the operating system's default set of roots.
+
+* ServerName and InsecureSkipVerify
+
+During a TLS connection, a client should check the server's hostname
+against the DNS names (or IP addresses) in the server's certificate. They
+should also verify the certificate is valid by following the certificate
+chain presented.
+
+Normally, client code should use `tls.Dial` to make a TLS connection;
+however, if more control is needed, the `tls.Client` route may be
+taken. The user must provide either the server's hostname (to make sure
+the certificate matches), or the `InsecureSkipVerify` field should be
+set to `true`. *This*should*not*be*done*carelessly*. If this is left on
+as a holdover from testing it could have serious security ramifications.
+
+With `InsecureSkipVerify`, the server will accept *any* certificate
+chain as valid. This is almost never what you want; it is a
+convenience in testing, but it is crucial that this not be used in
+production code unless you are making a well-informed choice. It
+removes authenticity from the system, and opens up the door to
+attacks. If you accidentally leave this turned on in production, it
+will probably end up with disastrous results for the security of your
+system. Several of the critical SSL vulnerabilities in the past twelve
+months were due to a failure to properly validate the authenticity of
+a certificate.
+
+Please, don't turn on `InsecureSkipVerify`.
+
+* PEM encoding
+
+PEM encoding is a way of exchanging binary data (like keys and certificates)
+in plaintext. A PEM-encoded value has a header and a footer, storing the
+base64'd binary data in between.
+
+    -----BEGIN CERTIFICATE-----
+    MIIC7jCCAdigAwIBAgIQLNdLfQSSSvdO96Mdz0vGQDALBgkqhkiG9w0BAQUwEjEQ
+    ...
+    wqVAD3A06+RXp3njOcyd1WpxlaFxWdIANCinY3wwh51PlA==
+    -----END CERTIFICATE-----
+
+The Go standard library has a package for this: `encoding/pem`.
+
+* RSA keys
+
+The `crypto/rsa` package handles RSA key operations. You should avoid using
+the PKCS1v1.5 functions -- these have been outdated since 2003, though some
+systems still use them (and you might have to, as well, for compatibility).
+You should be using RSA-OAEP for encryption and RSA-PSS for signatures.
+
+RSA keys have bit sizes; common sizes are:
+
+- 2048 bits (AES-128)
+- 3072 bits (AES-192)
+- 4096 bits (AES-256) (according to NIST, this should be 15780 bits, but 15780 bits is computationally extreme)
+
+Encrypting with RSA:
+
+.play demo/rsacrypt.go /^func main/,
+
+Signatures with RSA:
+
+.play demo/rsasign.go /^func main/,
+
+* ECDSA keys
+
+Elliptic curves require the selection of a specific curve. The
+`crypto/elliptic` package implements three standard NIST curves:
+
+- P256 (AES-128)
+- P384 (AES-192)
+- P521 (AES-256)
+
+.play demo/genec.go /^func main/,
+
+* NaCl Redux
+
+NaCl is a very straight-forward package. The public key package, `box`,
+has a function for generating keys. It does require a nonce: this is a
+number used *once* with that private key. It doesn't need to be random
+-- it could be a message counter so long as the message counter is
+monotonically increasing.
