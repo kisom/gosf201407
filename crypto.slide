@@ -4,6 +4,7 @@ Kyle Isom, CloudFlare
 @kyleisom
 
 https://www.cloudflare.com
+http://kyleisom.net
 
 * Goals of secure systems
 
@@ -28,7 +29,7 @@ Strong base with tools for
 - hashing
 - encryption
 - password storage
-- generating encryption keys from
+- generating encryption keys
 - common protocols, like TLS, PGP, and OTR
 
 * Random data
@@ -57,6 +58,7 @@ Strong base with tools for
 - Not the only choice, but a common and well-vetted choice
 - Based on a hash function
 - Requires a randomly-generated key (rule of thumb: same size as digest)
+- Package: `crypto/hmac`
 
 * HMAC (cont)
 
@@ -70,7 +72,7 @@ Strong base with tools for
 * Secret key crypto
 
 - This is tricky and must be done right.
-- To much to cover in this talk.
+- Too much to cover in this talk.
 - Use NaCl.
 - If required to use AES, use KeyCzar (or find someone who knows what they're doing)
 
@@ -82,8 +84,8 @@ Strong base with tools for
 
 * Password hashing
 
-- code.google.com/p/go.crypto/scrypt: good choice for password -> secret key
-- code.google.com/p/go.crypto/bcrypt: good choice for storing passwords
+- `code.google.com/p/go.crypto/scrypt`: good choice for password -> secret key
+- `code.google.com/p/go.crypto/bcrypt`: good choice for storing passwords
 
 bcrypt: don't need to generate and store a salt
 
@@ -121,6 +123,10 @@ returning 32 bytes of output:
 - doesn't originate from the NIST
 - fast authenticated cryptography
 - Terminology: "Seal" -> encrypt, "Open" -> decrypt
+
+* NaCl encryption with passwords
+
+.play demo/naclpass.go /^func main/,/updateNonce/
 
 * Cipher choice
 
@@ -203,7 +209,19 @@ Please don't turn on `InsecureSkipVerify`.
 - Notice EC key is much smaller than RSA key
 - Notice EC key is generate much faster than RSA key
 
+* Encrypting with NIST elliptic curves
+
+- This is a complex subject
+- Generate a shared key with ECDH (tricky to get right)
+- Use secret-key crypto for encryption and decryption
+
 * NaCl's elliptic curves
 
 .play demo/nacl.go /^\tbobPub/,/"OK"/
 
+* Real world projects
+
+- [[https://][Adam Langley]] wrote [[https://pond.imperialviolet.org/][Pond]] ([[https://github.com/agl/pond]])
+- [[https://twitter.com/dgryski/][Damian Gryksi]] [[https://github.com/dgryski/dkeyczar/][has implemented]] [[http://www.keyczar.org/][Keyczar]]
+- [[https://github.com/cmars][Casey Marshall]] has written an [[https://hockeypuck.github.io/][OpenPGP key server]]
+- [[https://cloudflare.com/][CloudFlare]] wrote [[https://github.com/cloudflare/cfssl][CFSSL]], an SSL utility
