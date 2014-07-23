@@ -9,34 +9,19 @@ http://kyleisom.net
 
 * What does crypto do?
 
-- Confidentiality (what most people think of when they think of
-encryption) prevents an eavesdropper from recovering the text of a
-secured message.
+- Confidentiality (what most people think of when they think of encryption) prevents an eavesdropper from recovering the text of a secured message.
 
 - Integrity ensures that the message hasn't been tampered with.
 
-- Authenticity ensures that both sides are talking to the peer they
-think they are talking to.
+- Authenticity ensures that both sides are talking to the peer they think they are talking to.
 
 All three are critical:
 
-- A system with integrity and authenticity but without confidentiality
-means that, while both sides can be sure of who they're talking to
-and that the message hasn't been tampered with, an attacker can read
-the message.
+- A system with integrity and authenticity but without confidentiality means that, while both sides can be sure of who they're talking to and that the message hasn't been tampered with, an attacker can read the message.
 
-- A system with confidentiality and authenticity but without integrity
-means that, while an attacker can't read the messages being sent and that
-they are talking to who they think they are talking to, an attacker
-can modify messages. This might not seem important, but it can be
-devastating (and there are many attacks proving this). Prime example:
-padding oracle attack.
+- A system with confidentiality and authenticity but without integrity means that, while an attacker can't read the messages being sent and that they are talking to who they think they are talking to, an attacker can modify messages. This might not seem important, but it can be devastating (and there are many attacks proving this). Prime example: padding oracle attack.
 
-- A system with confidentiality and integrity but without authenticity
-means that, while both sides can be sure that the messages aren't
-being tampered with and that an eavesdropper can't read the messages,
-neither side is sure who they're talking to. The classic example is a
-man-in-the-middle attack.
+- A system with confidentiality and integrity but without authenticity means that, while both sides can be sure that the messages aren't being tampered with and that an eavesdropper can't read the messages, neither side is sure who they're talking to. The classic example is a man-in-the-middle attack.
 
 * Diff'rent strokes for diffr'ent folks
 
